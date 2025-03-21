@@ -44,19 +44,22 @@ function Home() {
           level: 1,
           badges: [],
         };
+        console.log("user data", userData);
 
         // Send to backend (adjust URL to your FastAPI endpoint)
         const backendRes = await axios.post(
-          "http://localhost:8000/register",
+          "https://questboard-backend.onrender.com/user_registration",
           userData
         );
         const registeredUser = backendRes.data;
+        console.log("BE Register respone",backendRes)
 
         // Store in Redux
         dispatch(registerSuccess(registeredUser));
         navigate("/dashboard");
       } catch (err) {
-        if (err.response?.data?.message === "User already exists") {
+        console.log("errorrr",err)
+        if (err.response?.data?.detail === "User  already exists") {
           // User exists, treat as login
           dispatch(loginSuccess(err.response.data.user)); // Assumes backend sends user data in the error response
           navigate("/dashboard");
@@ -78,13 +81,13 @@ function Home() {
     },
   });
 
-//   if (isAuthenticated) {
-//     return (
-//       <div className="text-center p-8 text-brown-800">
-//         Welcome, adventurer! Redirecting to quests...
-//       </div>
-//     );
-//   }
+  //   if (isAuthenticated) {
+  //     return (
+  //       <div className="text-center p-8 text-brown-800">
+  //         Welcome, adventurer! Redirecting to quests...
+  //       </div>
+  //     );
+  //   }
 
   return (
     <div className="min-h-screen bg-gray-800 flex flex-col items-center justify-center">

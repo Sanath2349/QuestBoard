@@ -3,8 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { logout, updateUser } from "../redux/slices/authSlice";
 import { Link, useNavigate } from "react-router-dom";
+import QuestCard from "../components/QuestCard";
 
 function QuestDashboard() {
+  const [followedUsers, setFollowedUsers] = useState([2]); //mock followed users state
+  // Add state to track which quests the user has boosted
+  const [boostedQuests, setBoostedQuests] = useState([]);
   // Local state for UI (no Redux needed here)
   const [activeTab, setActiveTab] = useState("trending");
   const [quests, setQuests] = useState([]);
@@ -31,6 +35,8 @@ function QuestDashboard() {
       status: "open",
       accept_count: 10,
       created_at: "2025-03-18",
+      boost_score: 42, // Add this
+      created_by: 2,
     },
     {
       id: 2,
@@ -41,6 +47,8 @@ function QuestDashboard() {
       status: "open",
       accept_count: 5,
       created_at: "2025-03-19",
+      boost_score: 50, // Add this
+      created_by: 3,
     },
   ];
   useEffect(() => {
@@ -99,15 +107,58 @@ function QuestDashboard() {
   };
 
   const filteredQuests = quests.filter(
-    (quest) =>
-      quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quest.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (quest) => {
+      if (activeTab === "following") {
+        return followedUsers.includes(quest.created_by);
+      }
+      if (activeTab === "trending") {
+        return true;
+      }
+      return true;
+    }
+    // quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    // quest.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // For trending, sort by boost_score
+  const sortedQuests = [...filteredQuests].sort((a, b) => {
+    if (activeTab === "trending") {
+      return (
+        b.boost_score - a.boost_score ||
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+    }
+    return new Date(b.created_at) - new Date(a.created_at); // Default sort by date
+  });
+
+  // Add handleBoostQuest function
+  const handleBoostQuest = async (questId) => {
+    try {
+      // Simulate API call (replace with real API later)
+      // const response = await axios.post(
+      //   `http://localhost:8000/quests/${questId}/boost`,
+      //   { userId: user.id }
+      // );
+      if (boostedQuests.includes(questId)) {
+        return; // Already boosted
+      }
+      setBoostedQuests([...boostedQuests, questId]);
+      setQuests(
+        quests.map((quest) =>
+          quest.id === questId
+            ? { ...quest, boost_score: (quest.boost_score || 0) + 1 }
+            : quest
+        )
+      );
+    } catch (err) {
+      console.error("Failed to boost quest:", err);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-black px-4 md:px-28 ">
       {/* Sidebar */}
-      <div className="w-64 bg-brown-800 text-white  hidden md:block border-r border-blue-500 pl-4 pt-11">
+      <div className="w-64 bg-brown-800 text-white  hidden md:block border-r border-white pl-4 pt-11">
         <h2 className="text-2xl font-bold mb-6">QuestBoard</h2>
         <div className="mb-6">
           <p className="text-gold-500">{user?.username}</p>
@@ -141,7 +192,7 @@ function QuestDashboard() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className="bg-brown-800 text-white p-4 flex justify-around border-b border-blue-400">
+        <div className="bg-brown-800 text-white p-4 flex justify-around border-b border-white">
           {["trending", "newly added", "following"].map((tab) => (
             <button
               key={tab}
@@ -165,28 +216,19 @@ function QuestDashboard() {
             <p className="text-center">No quests available. Check back soon!</p>
           )}
           <div className="flex flex-col gap-4">
-            {filteredQuests.map((quest) => (
-              <div
-                key={quest.id}
-                className="bg-parchment-100 border  border-yellow-300 p-4 rounded-md m-2 md:m-10 transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
-              >
-                <h3 className="text-lg font-bold text-orange-600">
-                  {quest.title}
-                </h3>
-                <p className="text-gray-300">{quest.description}</p>
-                <p className="mt-2 text-gray-100">
-                  Reward: {quest.coins} QC, {quest.xp} XP
-                </p>
+            {sortedQuests.map((quest) => (
+              <div key={quest.id} className="relative quest-card-container">
+                <QuestCard
+                  quest={quest}
+                  onAccept={handleAcceptQuest}
+                  onBoost={handleBoostQuest}
+                  hasBoosted={boostedQuests.includes(quest.id)}
+                />
                 <button
-                  onClick={() => handleAcceptQuest(quest.id)}
-                  className={`mt-2 px-4 py-2 rounded ${
-                    quest.status === "accepted"
-                      ? "bg-gray-400 text-white cursor-not-allowed"
-                      : "bg-violet-600 text-white hover:bg-violet-400"
-                  }`}
-                  disabled={quest.status === "accepted"}
+                  onClick={() => navigate(`/profile/${quest.created_by}`)}
+                  className="absolute top-2 left-6 text-orange-600 hover:underline"
                 >
-                  {quest.status === "accepted" ? "Accepted" : "Accept"}
+                  {quest.title}
                 </button>
               </div>
             ))}
@@ -194,7 +236,7 @@ function QuestDashboard() {
         </main>
       </div>
       {/* search */}
-      <div className="w-64 bg-black text-white p-4 hidden md:flex flex-col gap-2 border-l border-blue-500">
+      <div className="w-64 bg-black text-white p-4 hidden md:flex flex-col gap-2 border-l border-white">
         <div className="relative">
           <input
             type="text"

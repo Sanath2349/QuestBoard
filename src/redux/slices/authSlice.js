@@ -19,6 +19,7 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
       state.loading = false;
+      state.error = null;
     },
     loginFailure(state, action) {
       state.loading = false;
@@ -32,6 +33,7 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
       state.loading = false;
+      state.error = null;
     },
     registerFailure(state, action) {
       state.loading = false;
@@ -40,6 +42,8 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
       state.isAuthenticated = false;
+      state.loading = false;
+      state.error = null;
     },
     updateUser(state, action) {
       state.user = { ...state.user, ...action.payload };
