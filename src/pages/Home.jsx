@@ -35,10 +35,10 @@ function Home() {
 
         // Prepare user data for backend
         const userData = {
-          googleId: googleUser.sub, // Unique Google ID
+          user_id: googleUser.sub, // Unique Google ID
           username: googleUser.name,
           email: googleUser.email,
-          picture: googleUser.picture,
+          profile_pic: googleUser.picture,
           xp: 0,
           coins: 0,
           level: 1,
