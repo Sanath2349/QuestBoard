@@ -52,16 +52,18 @@ function Home() {
           userData
         );
         const registeredUser = backendRes.data;
-        console.log("BE Register respone",backendRes)
+        console.log("Registered User:",registeredUser)
+
 
         // Store in Redux
         dispatch(registerSuccess(registeredUser));
         navigate("/dashboard");
       } catch (err) {
+        console.log("Backend Error Response:", err.response?.data);
         console.log("errorrr",err)
         if (err.response?.data?.detail === "User  already exists") {
           // User exists, treat as login
-          dispatch(loginSuccess(err.response.data.user)); // Assumes backend sends user data in the error response
+          dispatch(loginSuccess(err.response.data.complete_user_details)); // Assumes backend sends user data in the error response
           navigate("/dashboard");
         } else {
           dispatch(

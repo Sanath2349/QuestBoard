@@ -7,11 +7,14 @@ import Home from "./pages/Home";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import QuestDashboard from "./pages/QuestDashboard";
 import Profile from "./pages/Profile";
+import { ToastContainer } from "react-toastify";
 
 function App() {
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  console.log("App.jsx: isAuthenticated after rehydration:", isAuthenticated, user);
 
   return (
+
     <Router>
       <Routes>
         <Route
@@ -23,11 +26,23 @@ function App() {
           element={isAuthenticated ? <QuestDashboard /> : <Navigate to="/" />}
         />
         <Route
-          path="/profile/:userId"
+          path="/profile"
           element={isAuthenticated ? <Profile /> : <Navigate to="/" />}
         />
         <Route path="/questtest" element={<QuestDashboard/>}/>
-      </Routes>
+      </Routes>\
+      <ToastContainer
+           position="top-right"
+           autoClose={3000}
+           hideProgressBar={false}
+           newestOnTop={false}
+           closeOnClick
+           rtl={false}
+           pauseOnFocusLoss
+           draggable
+           pauseOnHover
+           theme="dark"
+      />
     </Router>
   );
 }

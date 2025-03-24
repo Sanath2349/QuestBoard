@@ -1,13 +1,17 @@
-import React from "react";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import QuestCard from "../components/QuestCard";
+import { logout, updateUser } from "../redux/slices/authSlice";
+import { ToastBar } from "react-hot-toast";
 
 const Profile = () => {
   const { userId } = useParams(); // Get userdId from URL
   const navigate = useNavigate();
   const { user: currentUser } = useSelector((state) => state.auth);
+  const userIdFromDetails = currentUser?.user_details?.user_id; // "UID68314463"
+  const dispatch = useDispatch();
   // Redux Explanation: useSelector accesses the 'auth' slice to get the logged-in user (currentUser).
   // We use this to check if the logged-in user is viewing their own profile and to get their ID for follow/unfollow.
   const [profileUser, setProfileUser] = useState(null);
@@ -63,27 +67,27 @@ const Profile = () => {
     },
   ];
 
-  // Fetch profile data and quests
   useEffect(() => {
+    // Only fetch profile if currentUser exists
+    if (!currentUser) return;
+
     const fetchProfile = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Replace with real API calls
-        // const userResponse = await axios.get(`http://localhost:8000/users/${userId}`);
-        // setProfileUser(userResponse.data);
-        const userData = mockUsers.find((u) => u.id === parseInt(userId));
+        const response = await axios.get(
+          `https://questboard-backend.onrender.com/user_details?user_id=${userIdFromDetails}`
+        );
+        const userData = response.data; // Get the actual data from the response
+        console.log("fetched user", userData);
         if (!userData) throw new Error("User not found");
         setProfileUser(userData);
 
-        // Check if current user is following this profile
-        // const followResponse = await axios.get(`http://localhost:8000/follow/check?follower_id=${currentUser.id}&followed_id=${userId}`);
-        // setIsFollowing(followResponse.data.isFollowing);
-        setIsFollowing(userId === "2" && currentUser.id === 1); // Mock: User 1 follows User 2
+        // Check if current user is following this profile, only if currentUser exists
+        if (currentUser && currentUser.id) {
+          setIsFollowing(userId === "2" && currentUser.id === 1); // Mock: User 1 follows User 2
+        }
 
-        // Fetch quests
-        // const questsResponse = await axios.get(`http://localhost:8000/users/${userId}/quests?type=${activeTab}`);
-        // setQuests(questsResponse.data);
         setQuests(
           mockQuests.filter((q) =>
             activeTab === "posted"
@@ -99,7 +103,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, [userId, activeTab, currentUser.id]);
+  }, [userId, activeTab, currentUser]); // Remove .id from dependency array if currentUser might be undefined initially
 
   const handleFollowToggle = async () => {
     try {
@@ -174,11 +178,10 @@ const Profile = () => {
   if (!profileUser)
     return <p className="text-center text-white">User not found.</p>;
 
-  const isOwnProfile = currentUser.id === parseInt(userId);
+  const isOwnProfile = currentUser && currentUser.id === parseInt(userId);
 
   return (
     <div className="flex min-h-screen bg-gray-800 px-4 md:px-28">
-      <Toaster position="top-right" />
       {/* Sidebar (same as QuestDashboard, could extract to a component) */}
       <div className="w-64 bg-brown-800 text-white p-4 hidden md:block border-r border-blue-500">
         <h2 className="text-2xl font-bold mb-6">QuestBoard</h2>

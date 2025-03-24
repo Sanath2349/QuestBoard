@@ -1,21 +1,24 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { persistStore,persistReducer } from "redux-persist";
 import localStorage from "redux-persist/es/storage";
 import storage from "redux-persist/lib/storage"
 import authReducer from "./slices/authSlice";
 
+const rootReducer = combineReducers({
+  auth: authReducer,
+});
+
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth"], // Only persist the 'auth' slice
+  whitelist: ["auth"],
+  debug: true, // Enable debug logging for redux-persist
 };
 
-const persistedReducer = persistReducer(persistConfig, authReducer);
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const store = configureStore({
-  reducer: {
-    auth: persistedReducer,
-  },
+  reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
@@ -24,6 +27,8 @@ const store = configureStore({
     }),
 });
 
-const persistor = persistStore(store);
+const persistor = persistStore(store, null, () => {
+  console.log("Persistor: State after rehydration:", store.getState());
+});
 
 export { store, persistor };

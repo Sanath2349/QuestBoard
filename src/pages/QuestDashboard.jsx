@@ -4,6 +4,7 @@ import axios from "axios";
 import { logout, updateUser } from "../redux/slices/authSlice";
 import { Link, useNavigate } from "react-router-dom";
 import QuestCard from "../components/QuestCard";
+import { toast } from "react-toastify";
 
 function QuestDashboard() {
   const [followedUsers, setFollowedUsers] = useState([2]); //mock followed users state
@@ -16,10 +17,18 @@ function QuestDashboard() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false); // State for modal
+  const [postForm, setPostForm] = useState({
+    title: "",
+    description: "",
+    coins: "",
+    xp: "",
+  });
+  const [postLoading, setPostLoading] = useState(false);
   // Redux: Access user data and dispatch actions
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const userIdFromDetails = user?.user_details?.user_id; // "UID68314463"
 
   // Explanation: useSelector((state) => state.auth) accesses the 'auth' slice of your Redux store.
   // 'state.auth' contains { user, isAuthenticated, loading, error } from authSlice.
@@ -106,6 +115,84 @@ function QuestDashboard() {
     // which will redirect the user back to the Home page (via App.jsx logic).
   };
 
+  const handlePostFormChange = (e) => {
+    const { name, value } = e.target;
+    setPostForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePostQuest = async (e) => {
+    e.preventDefault();
+    console.log("popst");
+    if (
+      !postForm.title ||
+      !postForm.description ||
+      !postForm.coins ||
+      !postForm.xp
+    ) {
+      toast.error("Please fill in all fields.", {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+      return;
+    }
+
+    setPostLoading(true);
+    try {
+      const newQuest = {
+        title: postForm.title,
+        description: postForm.description,
+        coins: parseInt(postForm.coins),
+        xp: parseInt(postForm.xp),
+        creation_date: new Date().toISOString(),
+      };
+
+      const response = await axios.post(
+        `https://questboard-backend.onrender.com/create_quests?created_by=${userIdFromDetails}&status=Open`,
+        newQuest
+      );
+      const createdQuest = response.data;
+      console.log("quest post response", response);
+
+      // Add the new quest to the local state
+      setQuests((prev) => [
+        {
+          ...createdQuest,
+          id: createdQuest.id || Date.now(), // Use a temporary ID if the backend doesn't return one
+          created_by: user.id, // Add created_by since it's in query params
+          status: "Open", // Add status since it's in query params
+          accept_count: 0, // Add default fields expected by QuestCard
+        },
+        ...prev,
+      ]);
+
+      // Reset the form and close the modal
+      setPostForm({ title: "", description: "", coins: "", xp: "" });
+      setIsPostModalOpen(false);
+
+      toast.success("Quest posted successfully!", {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+    } catch (err) {
+      console.error("Failed to post quest:", err);
+      toast.error("Failed to post quest. Try again later.", {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+    } finally {
+      setPostLoading(false);
+    }
+  };
+
   const filteredQuests = quests.filter(
     (quest) => {
       if (activeTab === "following") {
@@ -155,11 +242,19 @@ function QuestDashboard() {
     }
   };
 
+  const handlePost = () => {};
+
   return (
     <div className="flex min-h-screen bg-black px-4 md:px-28 ">
       {/* Sidebar */}
       <div className="w-64 bg-brown-800 text-white  hidden md:block border-r border-white pl-4 pt-11">
         <h2 className="text-2xl font-bold mb-6">QuestBoard</h2>
+        <button
+          className=" font-bold mb-6 bg-white text-black p-2 rounded-md"
+          onClick={() => setIsPostModalOpen(true)}
+        >
+          Post a Quest
+        </button>
         <div className="mb-6">
           <p className="text-gold-500">{user?.username}</p>
           <p>Level {user?.level}</p>
@@ -255,6 +350,81 @@ function QuestDashboard() {
           )}
         </div>
       </div>
+      {/* Post Quest Modal */}
+      {isPostModalOpen && (
+        <div className="fixed inset-0 bg-black  flex items-center justify-center z-50">
+          <div className="bg-brown-800 text-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4 text-gold-500">
+              Post a New Quest
+            </h2>
+            <form onSubmit={handlePostQuest}>
+              <div className="mb-4">
+                <label className="block text-sm mb-2">Quest Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={postForm.title}
+                  onChange={handlePostFormChange}
+                  className="w-full p-2 rounded-lg bg-gray-700 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Enter quest title"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={postForm.description}
+                  onChange={handlePostFormChange}
+                  className="w-full p-2 rounded-lg bg-gray-700 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  rows="4"
+                  placeholder="Describe the quest..."
+                ></textarea>
+              </div>
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-sm mb-2">Coins Reward</label>
+                  <input
+                    type="number"
+                    name="coins"
+                    value={postForm.coins}
+                    onChange={handlePostFormChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="e.g., 50"
+                    min="0"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm mb-2">XP Reward</label>
+                  <input
+                    type="number"
+                    name="xp"
+                    value={postForm.xp}
+                    onChange={handlePostFormChange}
+                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="e.g., 100"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPostModalOpen(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gold-500 text-brown-800 rounded-lg hover:bg-gold-600"
+                >
+                  Post Quest
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
