@@ -21,6 +21,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [boostedQuests, setBoostedQuests] = useState([]);
+  const [followers, setFollowers] = useState();
+  const [following, setFollowing] = useState();
   // Mock user and quests for now (replace with API calls later)
   const mockUsers = [
     {
@@ -103,6 +105,8 @@ const Profile = () => {
       }
     };
     fetchProfile();
+    get_followers();
+    get_following();
   }, [userId, activeTab, currentUser]); // Remove .id from dependency array if currentUser might be undefined initially
 
   const handleFollowToggle = async () => {
@@ -172,6 +176,34 @@ const Profile = () => {
     }
   };
 
+  const get_followers = async () => {
+    try {
+      const response = await axios.get(
+        `https://questboard-backend.onrender.com/get_user_followers_list?user_id=${userIdFromDetails}`
+      );
+      const followerscount = response.data.followers.length;
+      console.log("followers count", followerscount);
+      setFollowers(followerscount);
+    } catch (err) {
+      setError("Failed to load profile. Try again later.");
+      console.error(err);
+    }
+  };
+
+  const get_following = async () => {
+    try {
+      const response = await axios.get(
+        `https://questboard-backend.onrender.com/get_user_following_list?user_id=${userIdFromDetails}`
+      );
+      const followingcount = response.data.followers.length;
+      console.log("following count", followingcount);
+      setFollowing(followingcount);
+    } catch (err) {
+      setError("Failed to load profile. Try again later.");
+      console.error(err);
+    }
+  };
+
   if (loading)
     return <p className="text-center text-white">Loading profile...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
@@ -181,10 +213,15 @@ const Profile = () => {
   const isOwnProfile = currentUser && currentUser.id === parseInt(userId);
 
   return (
-    <div className="flex min-h-screen bg-gray-800 px-4 md:px-28">
+    <div className="flex min-h-screen bg-black px-4 md:px-28">
       {/* Sidebar (same as QuestDashboard, could extract to a component) */}
-      <div className="w-64 bg-brown-800 text-white p-4 hidden md:block border-r border-blue-500">
-        <h2 className="text-2xl font-bold mb-6">QuestBoard</h2>
+      <div className="w-64 bg-black text-white  hidden md:block border-r border-white pl-4 pt-11">
+        <h2
+          className="text-2xl font-bold mb-6"
+          onClick={() => navigate("/dashboard")}
+        >
+          QuestBoard
+        </h2>
         <div className="mb-6">
           <p className="text-gold-500">{currentUser?.username}</p>
           <p>Level {currentUser?.level}</p>
@@ -222,7 +259,7 @@ const Profile = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Profile Header */}
-        <div className="bg-brown-800 text-white p-6 border-b border-blue-400">
+        <div className="bg-brown-800 text-white p-6 border-b border-white">
           <div className="flex items-center gap-4">
             <img
               src={profileUser.picture}
@@ -247,7 +284,7 @@ const Profile = () => {
               </div>
             </div>
           </div>
-          {!isOwnProfile && (
+          {/* {!isOwnProfile && (
             <button
               onClick={handleFollowToggle}
               className={`mt-4 px-4 py-2 rounded ${
@@ -258,11 +295,15 @@ const Profile = () => {
             >
               {isFollowing ? "Unfollow" : "Follow"}
             </button>
-          )}
+          )} */}
+          <div className="flex gap-11 text-xl">
+            <h3>Followers {followers}</h3>
+            <h3>Following {following}</h3>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-brown-800 text-white p-4 flex justify-around border-b border-blue-400">
+        <div className="bg-brown-800 text-white p-4 flex justify-around border-b border-white">
           {["posted", "accepted"].map((tab) => (
             <button
               key={tab}

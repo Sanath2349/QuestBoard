@@ -7,7 +7,7 @@ import QuestCard from "../components/QuestCard";
 import { toast } from "react-toastify";
 
 function QuestDashboard() {
-  const [followedUsers, setFollowedUsers] = useState([2]); //mock followed users state
+  const [followedUsers, setFollowedUsers] = useState([]); //mock followed users state
   // Add state to track which quests the user has boosted
   const [boostedQuests, setBoostedQuests] = useState([]);
   // Local state for UI (no Redux needed here)
@@ -15,6 +15,8 @@ function QuestDashboard() {
   const [quests, setQuests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isPostModalOpen, setIsPostModalOpen] = useState(false); // State for modal
@@ -60,9 +62,39 @@ function QuestDashboard() {
       created_by: 3,
     },
   ];
+
+  // Fetch followed users function
+  const fetchFollowedUsers = async () => {
+    if (!userIdFromDetails) return; // Don't fetch if user ID isn't available yet
+    try {
+      const response = await axios.get(
+        `https://questboard-backend.onrender.com/get_user_following_list?user_id=${userIdFromDetails}`
+      );
+      const followedUserIds = response.data.followers; // Assuming this returns an array of user_ids
+      setFollowedUsers(followedUserIds);
+    } catch (err) {
+      console.error("Failed to fetch followed users:", err);
+      toast.error("Failed to load followed users.", {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+    }
+  };
+
   useEffect(() => {
     setQuests(mockQuests);
-  }, [activeTab]);
+    fetch_users();
+    fetchFollowedUsers();
+
+    // Set initial followed users from the current user's data
+    const currentUser = users.find((u) => u.user_id === userIdFromDetails);
+    if (currentUser) {
+      setFollowedUsers(currentUser.following);
+    }
+  }, [ userIdFromDetails]);
 
   // Fetch quests on mount and when tab changes
   // useEffect(() => {
@@ -242,13 +274,92 @@ function QuestDashboard() {
     }
   };
 
-  const handlePost = () => {};
+  const fetch_users = async () => {
+    try {
+      const response = await axios.get(
+        "https://questboard-backend.onrender.com/fetch_users"
+      );
+      const usersData = response.data;
+      console.log("usersData", usersData);
+      setUsers(usersData);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Add this function to handle following a user
+  const handleFollowUser = async (userToFollowId) => {
+    if (followedUsers.includes(userToFollowId)) {
+      toast.info("You already follow this user!", {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `https://questboard-backend.onrender.com/Following_user?user_id=${userIdFromDetails}&following_id=${userToFollowId}`
+      );
+  
+      // Update followedUsers by refetching from API
+      await fetchFollowedUsers();
+  
+      // Update users state locally (optional, if you want immediate UI update)
+      setUsers(
+        users.map((u) =>
+          u.user_id === userIdFromDetails
+            ? { ...u, following: [...u.following, userToFollowId] }
+            : u
+        )
+      );
+  
+      toast.success(response.data.message, {
+        style: {
+          background: "#4A2C2A",
+          color: "#F5E8C7",
+          border: "1px solid #D4AF37",
+        },
+      });
+    } catch (err) {
+      console.log(err)
+      if (
+        err.response?.status === 404 &&
+        err.response?.data?.detail?.includes("you already follow")
+      ) {
+        setFollowedUsers([...followedUsers, userToFollowId]);
+        toast.info("You already follow this user!", {
+          style: {
+            background: "#4A2C2A",
+            color: "#F5E8C7",
+            border: "1px solid #D4AF37",
+          },
+        });
+      } else {
+        console.error("Failed to follow user:", err);
+        toast.error("Failed to follow user. Try again later.", {
+          style: {
+            background: "#4A2C2A",
+            color: "#F5E8C7",
+            border: "1px solid #D4AF37",
+          },
+        });
+      }
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-black px-4 md:px-28 ">
       {/* Sidebar */}
-      <div className="w-64 bg-brown-800 text-white  hidden md:block border-r border-white pl-4 pt-11">
-        <h2 className="text-2xl font-bold mb-6">QuestBoard</h2>
+      <div className="w-64 bg-black text-white  hidden md:block border-r border-white pl-4 pt-11">
+        <h2
+          className="text-2xl font-bold mb-6"
+          onClick={() => navigate("/dashboard")}
+        >
+          QuestBoard
+        </h2>
         <button
           className=" font-bold mb-6 bg-white text-black p-2 rounded-md"
           onClick={() => setIsPostModalOpen(true)}
@@ -348,6 +459,35 @@ function QuestDashboard() {
               ✕
             </button>
           )}
+        </div>
+        <div className="bg-gray-800 p-2">
+          <h1 className="text-3xl font-semibold">Users</h1>
+          {users
+            .filter((user) => user.user_id !== userIdFromDetails)
+            .map((user) => {
+              const isFollowing = followedUsers.includes(user.user_id);
+              return (
+                <div
+                  key={user.user_id}
+                  className="py-2 flex items-center justify-between"
+                >
+                  <h2 className="text-xl">{user.username}</h2>
+                  <button
+                    onClick={() =>
+                      !isFollowing && handleFollowUser(user.user_id)
+                    }
+                    className={`px-2 py-1 rounded-md text-sm ${
+                      isFollowing
+                        ? "bg-gray-600 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                    disabled={isFollowing}
+                  >
+                    {isFollowing ? "Following" : "Follow"}
+                  </button>
+                </div>
+              );
+            })}
         </div>
       </div>
       {/* Post Quest Modal */}
